@@ -4,18 +4,32 @@
    ============================================================ */
 'use strict';
 
-/* ---------- 菜单数据 ---------- */
-const MENU = [
-  { id:'sj01', tag:'招牌',   name:'三鲜水饺', desc:'虾仁、猪肉、韭菜。三点鲜，一张皮。',     price:38, img:'assets/dumpling-1.jpg' },
-  { id:'sj02', tag:'经典',   name:'猪肉白菜', desc:'白菜杀过水，脆而不生。',                 price:32, img:'assets/dumpling-2.jpg' },
-  { id:'sj03', tag:'素馅',   name:'韭菜鸡蛋', desc:'土鸡蛋炒散，韭香不冲。',                 price:30, img:'assets/dumpling-3.jpg' },
-  { id:'sj04', tag:'时令',   name:'整只虾仁', desc:'一只饺子里放一整只虾。',                 price:52, img:'assets/dumpling-4.jpg' },
-  { id:'sj05', tag:'重口',   name:'牛肉胡萝卜', desc:'牛霖手剁，胡萝卜回甜。',              price:44, img:'assets/dumpling-5.jpg' },
-  { id:'sj06', tag:'清淡',   name:'素三鲜',   desc:'木耳、香菇、粉丝。不含肉。',             price:30, img:'assets/dumpling-6.jpg' },
-];
-const DELIVERY = 8;          // 配送费
-const FREE_OVER = 99;        // 满额免配送
+/* ---------- 后端 ---------- */
+const API = 'https://sanxian-shouzuo-api.onrender.com';
+
+/* ---------- 菜单（从后端拉，不再写死在前端）---------- */
+let MENU = [];
+let DELIVERY = 8;      // 配送费，后端下发
+let FREE_OVER = 99;    // 免运费门槛，后端下发
+let CLOSED = false;    // 打烊开关，后端下发
 const STATUSES = ['待确认','包制中','配送中','已完成'];
+
+async function loadMenu(){
+  try {
+    const r = await fetch(`${API}/api/menu`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    MENU = d.items || [];
+    DELIVERY = Number(d.delivery_fee ?? 8);
+    FREE_OVER = Number(d.free_over ?? 99);
+    CLOSED = !!d.closed;
+    if (CLOSED) toast('今日已打烊，明天再来');
+  } catch (e) {
+    console.warn('菜单拉取失败', e);
+    toast('菜单加载失败，请刷新');
+  }
+  renderMenu(); syncCart();
+}
 
 /* ---------- 存储 ---------- */
 const DB = {
@@ -23,8 +37,6 @@ const DB = {
   set(k, v){ localStorage.setItem(k, JSON.stringify(v)); },
 };
 let cart    = DB.get('sj_cart', {});          // { id: qty }
-let orders  = DB.get('sj_orders', []);
-let seq     = DB.get('sj_seq', 0);
 
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -119,110 +131,115 @@ function openCheckout(){
   closeCart(); openModal($('#checkout'));
 }
 
-function nextOrderNo(){
-  seq += 1; DB.set('sj_seq', seq);
-  const d = new Date();
-  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-  return `SJ${stamp}-${String(seq).padStart(4,'0')}`;
-}
-
-function submitOrder(e){
+async function submitOrder(e){
   e.preventDefault();
+  if (CLOSED) return toast('今日已打烊');
+
   const fd = new FormData(e.target);
-  const order = {
-    no: nextOrderNo(),
+  const payload = {
     name: fd.get('name').trim(),
     phone: fd.get('phone').trim(),
     address: fd.get('address').trim(),
     slot: fd.get('slot'),
-    items: cartList().map(i => ({ name:i.name, qty:i.qty, price:i.price })),
-    amount: Number(total().toFixed(2)),
-    status: '待确认',
-    ts: Date.now(),
+    items: cartList().map(i => ({ id: i.id, qty: i.qty })),   // 只报 id 和数量，价格服务端算
   };
-  orders.unshift(order);
-  DB.set('sj_orders', orders);
-  cart = {}; DB.set('sj_cart', cart);
-  syncCart(); closeModals(); e.target.reset();
-  $('#orderNo').textContent = order.no;
-  openModal($('#success'));
-  renderAdmin();
+
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = '提交中…';
+  try {
+    const r = await fetch(`${API}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+
+    cart = {}; DB.set('sj_cart', cart);
+    syncCart(); closeModals(); e.target.reset();
+    $('#orderNo').textContent = d.order_no;
+    openModal($('#success'));
+    toast(`下单成功 ${d.order_no}`);
+  } catch (err) {
+    toast('下单失败：' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '确认下单';
+  }
 }
 
-/* ---------- 管理后台 ---------- */
-function isToday(ts){ const d = new Date(ts), n = new Date();
-  return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate(); }
+/* ---------- 管理后台（数据全部来自后端）---------- */
 const fmt = ts => { const d = new Date(ts);
   return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
 
-function customerStats(){
-  const map = new Map();
-  for (const o of orders){
-    const k = o.phone;
-    if (!map.has(k)) map.set(k, { name:o.name, phone:o.phone, n:0, sum:0, last:0 });
-    const c = map.get(k);
-    c.n += 1; c.sum += o.amount; c.last = Math.max(c.last, o.ts);
-    c.name = o.name;                       // 取最近一次的名字
+function adminToken(){
+  let t = localStorage.getItem('sj_admin_token');
+  if (!t){
+    t = (prompt('输入管理令牌（X-Admin-Token）') || '').trim();
+    if (t) localStorage.setItem('sj_admin_token', t);
   }
-  return Array.from(map.values()).sort((a,b) => b.sum - a.sum);
+  return t || '';
 }
 
-function renderAdmin(){
-  const today = orders.filter(o => isToday(o.ts));
-  const revenue = today.reduce((s,o) => s + o.amount, 0);
-  const pending = orders.filter(o => o.status !== '已完成').length;
-  const custs = customerStats();
-
-  $('#kpis').innerHTML = `
-    <div class="kpi"><span>今日订单</span><b>${today.length}</b></div>
-    <div class="kpi accent"><span>今日营收</span><b>${money(revenue)}</b></div>
-    <div class="kpi"><span>客户总数</span><b>${custs.length}</b></div>
-    <div class="kpi"><span>待处理</span><b>${pending}</b></div>`;
-
-  $('#ordersTable tbody').innerHTML = orders.length ? orders.map((o,i) => `
-    <tr>
-      <td>${o.no}</td><td>${o.name}</td><td class="phone">${o.phone}</td>
-      <td>${money(o.amount)}</td>
-      <td><button class="badge" data-s="${o.status}" data-adv="${i}" title="点击流转状态">${o.status}</button></td>
-      <td class="muted">${fmt(o.ts)}</td>
-    </tr>`).join('') : '<tr><td colspan="6" class="muted" style="padding:2rem;text-align:center">还没有订单</td></tr>';
-
-  $('#customersTable tbody').innerHTML = custs.length ? custs.map(c => `
-    <tr><td>${c.name}</td><td class="phone">${c.phone}</td>
-    <td>${c.n}</td><td>${money(c.sum)}</td><td class="muted">${fmt(c.last)}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="muted" style="padding:2rem;text-align:center">还没有客户</td></tr>';
+/** 带令牌调后端；401 就清掉令牌并提示重输 */
+async function api(path, opts = {}){
+  const r = await fetch(API + path, {
+    ...opts,
+    headers: { ...(opts.headers || {}), 'X-Admin-Token': adminToken() },
+    cache: 'no-store',
+  });
+  if (r.status === 401){
+    localStorage.removeItem('sj_admin_token');
+    throw new Error('令牌无效，已清除。关掉后台再点一次重新输入');
+  }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+  return d;
 }
 
-function advanceStatus(i){
-  const o = orders[i];
-  const k = STATUSES.indexOf(o.status);
-  o.status = STATUSES[(k + 1) % STATUSES.length];
-  DB.set('sj_orders', orders);
-  renderAdmin();
-  toast(`${o.no} → ${o.status}`);
+async function renderAdmin(){
+  const money = n => '¥' + Number(n || 0).toFixed(2);
+  try {
+    const [stats, ordersRes, custRes] = await Promise.all([
+      api('/api/stats'), api('/api/orders?limit=100'), api('/api/customers'),
+    ]);
+
+    $('#kpis').innerHTML = `
+      <div class="kpi"><span>今日订单</span><b>${stats.today_orders}</b></div>
+      <div class="kpi accent"><span>今日营收</span><b>${money(stats.today_revenue)}</b></div>
+      <div class="kpi"><span>客户总数</span><b>${stats.customers}</b></div>
+      <div class="kpi"><span>待处理</span><b>${stats.pending}</b></div>`;
+
+    const os = ordersRes.orders || [];
+    $('#ordersTable tbody').innerHTML = os.length ? os.map(o => `
+      <tr>
+        <td>${o.order_no}</td><td>${o.name}</td><td class="phone">${o.phone}</td>
+        <td>${money(o.amount)}</td>
+        <td><button class="badge" data-s="${o.status}" data-adv="${o.id}" title="点击流转状态">${o.status}</button></td>
+        <td class="muted">${fmt(o.created_at)}</td>
+      </tr>`).join('') : '<tr><td colspan="6" class="muted" style="padding:2rem;text-align:center">还没有订单</td></tr>';
+
+    const cs = custRes.customers || [];
+    $('#customersTable tbody').innerHTML = cs.length ? cs.map(c => `
+      <tr><td>${c.name}</td><td class="phone">${c.phone}</td>
+      <td>${c.orders_count}</td><td>${money(c.total_amount)}</td><td class="muted">${fmt(c.last_at)}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted" style="padding:2rem;text-align:center">还没有客户</td></tr>';
+  } catch (e) {
+    $('#kpis').innerHTML =
+      `<div class="kpi" style="grid-column:1/-1"><span>读取失败</span><b style="font-size:1rem">${e.message}</b></div>`;
+  }
 }
 
-function seedDemo(){
-  const names = [['张伟','13800001111'],['李娜','13900002222'],['王强','13700003333'],
-                 ['陈静','13600004444'],['刘洋','13500005555']];
-  const now = Date.now();
-  let n = seq;
-  for (let i = 0; i < 12; i++){
-    const [nm, ph] = names[i % names.length];
-    const pick = MENU[Math.floor(Math.random()*MENU.length)];
-    const qty = 1 + Math.floor(Math.random()*2);
-    n += 1;
-    orders.push({
-      no: `SJ${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}${String(new Date().getDate()).padStart(2,'0')}-${String(n).padStart(4,'0')}`,
-      name: nm, phone: ph, address: '演示地址', slot: '尽快（约 2 小时）',
-      items: [{ name:pick.name, qty, price:pick.price }],
-      amount: pick.price * qty + (pick.price*qty >= FREE_OVER ? 0 : DELIVERY),
-      status: STATUSES[Math.floor(Math.random()*STATUSES.length)],
-      ts: now - Math.floor(Math.random()*10) * 3600 * 1000,
+async function advanceStatus(id, current){
+  const next = STATUSES[(STATUSES.indexOf(current) + 1) % STATUSES.length];
+  try {
+    await api(`/api/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next }),
     });
-  }
-  seq = n; DB.set('sj_seq', seq); DB.set('sj_orders', orders);
-  renderAdmin(); toast('已灌入 12 条示例订单');
+    toast(`订单 → ${next}`);
+    renderAdmin();
+  } catch (e) { toast('改状态失败：' + e.message); }
 }
 
 function enterAdmin(){ $('#admin').hidden = false; document.body.style.overflow='hidden'; renderAdmin(); }
@@ -274,7 +291,7 @@ function toast(msg){
 
 /* ---------- 事件绑定 ---------- */
 function init(){
-  renderMenu(); syncCart(); initChapters(); observeReveals();
+  syncCart(); initChapters(); observeReveals(); loadMenu();
   window.addEventListener('scroll', () => {
     $('#nav').classList.toggle('is-solid', window.scrollY > 40);
   }, { passive:true });
@@ -285,7 +302,7 @@ function init(){
     if (t.dataset.add  !== undefined) addToCart(t.dataset.add, t);
     if (t.dataset.inc  !== undefined) setQty(t.dataset.inc, +1);
     if (t.dataset.dec  !== undefined) setQty(t.dataset.dec, -1);
-    if (t.dataset.adv  !== undefined) advanceStatus(+t.dataset.adv);
+    if (t.dataset.adv  !== undefined) advanceStatus(t.dataset.adv, t.dataset.s);
     if (t.hasAttribute('data-close-modal')) closeModals();
   });
 
@@ -296,11 +313,11 @@ function init(){
   $('#checkoutForm').addEventListener('submit', submitOrder);
   $('#adminEntry').addEventListener('click', enterAdmin);
   $('#adminExit').addEventListener('click', exitAdmin);
-  $('#seedBtn').addEventListener('click', seedDemo);
+  $('#seedBtn').addEventListener('click', () => { renderAdmin(); toast('已刷新'); });
   $('#clearBtn').addEventListener('click', () => {
-    if (!confirm('清空所有订单与客户数据？')) return;
-    orders = []; seq = 0; DB.set('sj_orders', orders); DB.set('sj_seq', 0);
-    renderAdmin(); toast('数据已清空');
+    localStorage.removeItem('sj_admin_token');
+    toast('已退出管理，下次进入需重新输入令牌');
+    exitAdmin();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeCart(); closeModals(); } });
   if (location.hash === '#admin') enterAdmin();

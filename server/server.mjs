@@ -251,10 +251,14 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (p === '/api/stats') {
+        // 注意：created_at 是 timestamptz，直接 ::date 会按服务器时区(UTC)算，
+        // 跟悉尼的「今天」对不上。两边都先转到悉尼时区再比。
         const { rows: [s] } = await pool.query(`
           SELECT
-            (SELECT count(*) FROM orders WHERE created_at::date = (now() AT TIME ZONE 'Australia/Sydney')::date) AS today_orders,
-            (SELECT COALESCE(sum(amount),0) FROM orders WHERE created_at::date = (now() AT TIME ZONE 'Australia/Sydney')::date) AS today_revenue,
+            (SELECT count(*) FROM orders
+              WHERE (created_at AT TIME ZONE 'Australia/Sydney')::date = (now() AT TIME ZONE 'Australia/Sydney')::date) AS today_orders,
+            (SELECT COALESCE(sum(amount),0) FROM orders
+              WHERE (created_at AT TIME ZONE 'Australia/Sydney')::date = (now() AT TIME ZONE 'Australia/Sydney')::date) AS today_revenue,
             (SELECT count(DISTINCT phone) FROM orders) AS customers,
             (SELECT count(*) FROM orders WHERE status NOT IN ('已完成','已取消')) AS pending,
             (SELECT COALESCE(sum(amount),0) FROM orders) AS total_revenue
