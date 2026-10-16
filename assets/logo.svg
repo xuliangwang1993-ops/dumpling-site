@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FBF7F0"/>
+      <stop offset="100%" stop-color="#E8DECB"/>
+    </linearGradient>
+    <clipPath id="bodyClip">
+      <path d="M300 168 C 196 168, 150 250, 150 322 C 150 400, 208 452, 300 452 C 392 452, 450 400, 450 322 C 450 250, 404 168, 300 168 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- 外圈 -->
+  <circle cx="300" cy="300" r="272" fill="none" stroke="#1F3A32" stroke-width="10"/>
+
+  <!-- 饺子主体 -->
+  <path d="M300 168 C 196 168, 150 250, 150 322 C 150 400, 208 452, 300 452 C 392 452, 450 400, 450 322 C 450 250, 404 168, 300 168 Z"
+        fill="url(#skin)" stroke="#1F3A32" stroke-width="9"/>
+
+  <!-- 褶子：7 道，从左到右 -->
+  <g clip-path="url(#bodyClip)" stroke="#1F3A32" stroke-width="7" fill="none" stroke-linecap="round">
+    <path d="M186 300 C 214 258, 246 250, 272 268"/>
+    <path d="M214 330 C 246 282, 282 272, 312 288"/>
+    <path d="M246 356 C 282 308, 320 296, 352 310"/>
+    <path d="M284 374 C 320 330, 356 320, 386 334"/>
+    <path d="M322 384 C 356 346, 388 340, 412 352"/>
+    <path d="M362 386 C 390 356, 416 352, 434 362"/>
+    <path d="M400 380 C 420 362, 434 360, 442 366"/>
+  </g>
+
+  <!-- 收口线 -->
+  <path d="M150 322 C 196 372, 248 396, 300 396 C 352 396, 404 372, 450 322"
+        fill="none" stroke="#1F3A32" stroke-width="9" stroke-linecap="round"/>
+
+  <!-- 蒸汽：三缕 -->
+  <g stroke="#E07A3F" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.9">
+    <path d="M256 128 C 240 108, 272 92, 256 70"/>
+    <path d="M300 118 C 284 96, 316 80, 300 56"/>
+    <path d="M344 128 C 328 108, 360 92, 344 70"/>
+  </g>
+
+  <!-- 文字 -->
+  <text x="300" y="524" text-anchor="middle" font-family="Songti SC, Noto Serif CJK SC, serif"
+        font-size="62" font-weight="700" fill="#1F3A32" letter-spacing="10">三鲜手作</text>
+  <text x="300" y="562" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif"
+        font-size="19" fill="#8A8578" letter-spacing="7">HANDMADE DUMPLINGS</text>
+</svg>

@@ -1,0 +1,4 @@
+_raw/
+tmp_*
+*.tmp
+.DS_Store

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三鲜手作 · 手工现包水饺</title>
+<meta name="description" content="三鲜手作，手工现包水饺。看得见的手，尝得到的鲜。">
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ 导航 ============ -->
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="三鲜手作 首页">
+    <img src="assets/logo.png" alt="三鲜手作" class="brand-logo"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <span class="brand-text" style="display:none">三鲜手作</span>
+    <span class="brand-sub">HANDMADE DUMPLINGS</span>
+  </a>
+  <nav class="nav-links">
+    <a href="#story">手作</a>
+    <a href="#menu">菜单</a>
+    <a href="#how">下单</a>
+    <a href="#kit">物料</a>
+  </nav>
+  <button class="cart-btn" id="cartBtn" aria-label="打开购物车">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.6" fill="currentColor"/><circle cx="18" cy="20" r="1.6" fill="currentColor"/><path d="M6 6 5 3H2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <span class="cart-count" id="cartCount">0</span>
+  </button>
+</header>
+
+<!-- ============ 首屏：视频互动 ============ -->
+<section class="hero" id="top">
+  <video class="hero-video" id="heroVideo" autoplay muted loop playsinline
+         poster="assets/hero-poster.jpg" src="assets/clip-1.mp4"></video>
+  <div class="hero-scrim"></div>
+  <div class="hero-inner">
+    <p class="eyebrow">从一团面，到一只饺子</p>
+    <h1 class="hero-title">看得见的手<br><em>尝得到的鲜</em></h1>
+    <p class="hero-lead">不冻、不预制。每单现包，两小时内送到。</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#menu">看菜单下单</a>
+      <a class="btn btn-ghost" href="#story">看我们怎么包</a>
+    </div>
+  </div>
+  <!-- 视频章节点 -->
+  <div class="chapters" id="chapters" role="tablist" aria-label="制作过程章节">
+    <button class="chapter is-active" data-clip="assets/clip-1.mp4" data-poster="assets/clip-1.jpg" role="tab">
+      <span class="ch-dot"></span><span class="ch-name">揉面</span>
+    </button>
+    <button class="chapter" data-clip="assets/clip-2.mp4" data-poster="assets/clip-2.jpg" role="tab">
+      <span class="ch-dot"></span><span class="ch-name">擀皮</span>
+    </button>
+    <button class="chapter" data-clip="assets/clip-3.mp4" data-poster="assets/clip-3.jpg" role="tab">
+      <span class="ch-dot"></span><span class="ch-name">捏合</span>
+    </button>
+    <button class="chapter" data-clip="assets/clip-4.mp4" data-poster="assets/clip-4.jpg" role="tab">
+      <span class="ch-dot"></span><span class="ch-name">下锅</span>
+    </button>
+  </div>
+  <div class="hero-progress"><span id="heroProgress"></span></div>
+</section>
+
+<!-- ============ 品牌故事 ============ -->
+<section class="section story" id="story">
+  <div class="wrap story-grid">
+    <div class="reveal">
+      <p class="kicker">01 — 手作</p>
+      <h2>三点鲜，一张皮</h2>
+      <p>虾仁、猪肉、韭菜，三样都得当天早上到。皮要擀到能透光，褶子恰好十二道——多了厚，少了漏。</p>
+      <p>我们的厨房是敞开的，摄像头就在案板上方。你下单之后看到的那只饺子，就是下锅的那只。</p>
+      <ul class="facts">
+        <li><b>2h</b><span>出锅到送达</span></li>
+        <li><b>12</b><span>道褶</span></li>
+        <li><b>0</b><span>预制品</span></li>
+      </ul>
+    </div>
+    <figure class="story-media reveal">
+      <img src="assets/clip-3.jpg" alt="包好的手工水饺整齐排列"
+           onerror="this.closest('figure').classList.add('is-empty')">
+      <figcaption>案板上的第 12 道褶</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 菜单 ============ -->
+<section class="section menu" id="menu">
+  <div class="wrap">
+    <p class="kicker">02 — 菜单</p>
+    <h2>今天能包出来的</h2>
+    <p class="section-lead">一份 12 只。可以混搭，结算时备注。</p>
+    <div class="menu-grid" id="menuGrid"><!-- JS 渲染 --></div>
+  </div>
+</section>
+
+<!-- ============ 下单流程 ============ -->
+<section class="section how" id="how">
+  <div class="wrap">
+    <p class="kicker">03 — 下单</p>
+    <h2>四步到嘴</h2>
+    <ol class="steps">
+      <li class="reveal"><b>选</b><p>挑馅料，加进购物车。</p></li>
+      <li class="reveal"><b>填</b><p>姓名、电话、地址、配送时段。</p></li>
+      <li class="reveal"><b>包</b><p>接单后现包，厨房直播可看。</p></li>
+      <li class="reveal"><b>送</b><p>两小时内送达，凉了包退。</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ 物料 ============ -->
+<section class="section kit" id="kit">
+  <div class="wrap kit-inner">
+    <div>
+      <p class="kicker">04 — 物料</p>
+      <h2>品牌物料下载</h2>
+      <p>菜单与规格书由 Craft 引擎排版导出，可直接送印。</p>
+    </div>
+    <div class="kit-links">
+      <a class="kit-card" href="assets/menu.pdf" download>
+        <b>菜单 · 印刷版</b><span>PDF · CMYK</span>
+      </a>
+      <a class="kit-card" href="assets/spec.pdf" download>
+        <b>规格书 · 加盟用</b><span>PDF</span>
+      </a>
+      <a class="kit-card" href="assets/logo.svg" download>
+        <b>品牌标志 · 矢量</b><span>SVG</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>© 2026 三鲜手作 · 手工现包</span>
+    <button class="admin-entry" id="adminEntry" aria-label="进入管理后台">管理后台</button>
+  </div>
+</footer>
+
+<!-- ============ 购物车抽屉 ============ -->
+<aside class="drawer" id="cartDrawer" aria-hidden="true" aria-label="购物车">
+  <div class="drawer-head">
+    <h3>购物车</h3>
+    <button class="icon-btn" id="cartClose" aria-label="关闭购物车">✕</button>
+  </div>
+  <div class="drawer-body" id="cartBody"></div>
+  <div class="drawer-foot" id="cartFoot"></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+
+<!-- ============ 结算弹窗 ============ -->
+<div class="modal" id="checkout" hidden role="dialog" aria-modal="true" aria-labelledby="coTitle">
+  <div class="modal-card">
+    <div class="drawer-head">
+      <h3 id="coTitle">填写配送信息</h3>
+      <button class="icon-btn" data-close-modal aria-label="关闭">✕</button>
+    </div>
+    <form id="checkoutForm" class="form">
+      <label>姓名 <input name="name" required autocomplete="name" placeholder="张伟"></label>
+      <label>电话 <input name="phone" required inputmode="tel" pattern="[0-9+\- ]{6,20}" placeholder="13800000000"></label>
+      <label>地址 <input name="address" required autocomplete="street-address" placeholder="杭州市西湖区文三路 100 号 3 幢 501"></label>
+      <label>配送时段
+        <select name="slot">
+          <option>尽快（约 2 小时）</option>
+          <option>今天 17:00–19:00</option>
+          <option>明天 11:00–13:00</option>
+        </select>
+      </label>
+      <div class="form-sum" id="formSum"></div>
+      <button class="btn btn-primary btn-block" type="submit">确认下单</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ 订单成功 ============ -->
+<div class="modal" id="success" hidden role="dialog" aria-modal="true">
+  <div class="modal-card center">
+    <div class="tick">✓</div>
+    <h3>下单成功</h3>
+    <p class="order-no" id="orderNo">—</p>
+    <p class="muted">厨房已收到，现包大约 40 分钟。配送前会电话确认。</p>
+    <button class="btn btn-primary" data-close-modal>好</button>
+  </div>
+</div>
+
+<!-- ============ 管理后台 ============ -->
+<section class="admin" id="admin" hidden aria-label="客户管理系统">
+  <div class="admin-bar">
+    <h2>三鲜手作 · 管理后台</h2>
+    <div class="admin-actions">
+      <button class="btn btn-ghost" id="seedBtn">灌示例数据</button>
+      <button class="btn btn-ghost" id="clearBtn">清空数据</button>
+      <button class="btn btn-primary" id="adminExit">返回前台</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"><!-- JS 渲染 --></div>
+
+  <div class="admin-cols">
+    <div class="panel">
+      <h3>订单</h3>
+      <div class="table-wrap"><table id="ordersTable">
+        <thead><tr><th>订单号</th><th>客户</th><th>电话</th><th>金额</th><th>状态</th><th>时间</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <h3>客户</h3>
+      <div class="table-wrap"><table id="customersTable">
+        <thead><tr><th>客户</th><th>电话</th><th>下单</th><th>累计</th><th>最近</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
