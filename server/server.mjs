@@ -142,10 +142,11 @@ async function createOrder(input, ip) {
 
     const { rows: [{ next_order_no: orderNo }] } = await client.query('SELECT next_order_no()');
 
+    const cur = st.currency || 'AUD';
     const { rows: [o] } = await client.query(
-      `INSERT INTO orders (order_no,name,phone,address,slot,note,subtotal,delivery_fee,amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, order_no, amount, created_at`,
-      [orderNo, name, phone, address, slot, note, subtotal, fee, amount]
+      `INSERT INTO orders (order_no,name,phone,address,slot,note,subtotal,delivery_fee,amount,currency)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, order_no, amount, currency, created_at`,
+      [orderNo, name, phone, address, slot, note, subtotal, fee, amount, cur]
     );
     for (const l of lines) {
       await client.query(
@@ -184,13 +185,22 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/menu' && req.method === 'GET') {
       const { rows } = await pool.query(
-        'SELECT id, tag, name, descr, price, img FROM menu_items WHERE active ORDER BY sort, id'
+        `SELECT id, tag, name, descr, tag_en, name_en, descr_en, price, img
+           FROM menu_items WHERE active ORDER BY sort, id`
       );
       const st = await getSettings(pool);
       return json(res, 200, {
-        items: rows.map(r => ({ ...r, price: Number(r.price) })),
+        items: rows.map(r => ({
+          id: r.id,
+          price: Number(r.price),
+          img: r.img,
+          // 两种语言都给，前端按当前语言挑
+          zh: { tag: r.tag, name: r.name, descr: r.descr },
+          en: { tag: r.tag_en, name: r.name_en, descr: r.descr_en },
+        })),
         delivery_fee: Number(st.delivery_fee),
         free_over: Number(st.free_over),
+        currency: st.currency || 'AUD',
         closed: st.closed === 'true',
       });
     }
@@ -261,7 +271,8 @@ const server = http.createServer(async (req, res) => {
               WHERE (created_at AT TIME ZONE 'Australia/Sydney')::date = (now() AT TIME ZONE 'Australia/Sydney')::date) AS today_revenue,
             (SELECT count(DISTINCT phone) FROM orders) AS customers,
             (SELECT count(*) FROM orders WHERE status NOT IN ('已完成','已取消')) AS pending,
-            (SELECT COALESCE(sum(amount),0) FROM orders) AS total_revenue
+            (SELECT COALESCE(sum(amount),0) FROM orders) AS total_revenue,
+            (SELECT COALESCE((SELECT value FROM settings WHERE key='currency'),'AUD')) AS currency
         `);
         return json(res, 200, s);
       }
