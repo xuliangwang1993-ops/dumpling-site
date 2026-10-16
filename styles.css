@@ -19,6 +19,9 @@
   --nav-h:72px;
 }
 *,*::before,*::after{box-sizing:border-box}
+/* hidden 属性必须能压住后面的 display —— .modal/.drawer 都设了 display，
+   不写这条的话 <div hidden> 照样会显示出来 */
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{
   margin:0;background:var(--paper);color:var(--ink);
