@@ -1,0 +1,38 @@
+# ============================================================
+# 后端部署蓝图（**不在仓库根目录，Render 不会自动应用**）
+#
+# 想用的时候两种方式：
+#   A. 手动：照下面的参数在 Render 控制台建，或用 API 建（见 /root/deploy_dumpling.sh 的写法）
+#   B. 蓝图：把本文件复制成仓库根的 render.yaml，Render → New → Blueprint
+#
+# 注意：建库和建服务都要花钱，别在没确认的情况下推成根 render.yaml。
+# ============================================================
+services:
+  # ---------- 订单 API ----------
+  - type: web
+    name: sanxian-shouzuo-api
+    runtime: node
+    plan: starter                    # $7/月，不休眠
+    region: singapore
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.mjs
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sanxian-shouzuo-db
+          property: connectionString
+      - key: ADMIN_TOKEN
+        generateValue: true          # Render 自动生成一个随机令牌
+      - key: ALLOWED_ORIGINS
+        value: https://sanxian-shouzuo.onrender.com
+      - key: NODE_VERSION
+        value: "22"
+
+databases:
+  - name: sanxian-shouzuo-db
+    plan: basic-256mb                # 最小付费档，不休眠、不过期
+    region: singapore
+    postgresMajorVersion: "18"
